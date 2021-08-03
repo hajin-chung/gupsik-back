@@ -1,10 +1,12 @@
 const app = require('express')();
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
-const URL = "https://www.dimigo.hs.kr/index.php?mid=school_cafeteria"
+const cors = require('cors');
 require('dotenv').config();
 
 let cache = {};
+
+app.use(cors());
 
 app.get('/meal', (req, res) => {
   let now = new Date();
