@@ -8,7 +8,7 @@ let cache = {};
 
 app.use(cors());
 
-app.get('/meal', (req, res) => {
+app.get('/meal', async (req, res) => {
   let now = new Date();
   let nowMonth = `${now.getMonth()+1}`;
   let nowDay = `${now.getDate()}`;
@@ -22,44 +22,40 @@ app.get('/meal', (req, res) => {
     if(cache.hasOwnProperty(`${month}-${day}`)) {
       res.status(200).json(cache[`${month}-${day}`]);
     } else {
-    fetch(searchQuery)
-      .then(r => r.text())
-      .then(listRes => {
+      try {
+        let listRes = await fetch(searchQuery);
+        listRes = await listRes.text();
+
         let $ = cheerio.load(listRes);
         let mealUrl = $('#dimigo_post_cell_2 > tr:nth-child(1) > td.title > div > a').attr('href');
         mealUrl = encodeURI(mealUrl);
+        console.log({ searchQuery, mealUrl });
+        
+        let mealRes = await fetch(mealUrl);
+        mealRes = await mealRes.text();
 
-        fetch(mealUrl).then(r => r.text())
-          .then(mealRes => {
-            let $ = cheerio.load(mealRes);
-            let meal = {};
+        $ = cheerio.load(mealRes);
+        let meal = {};
 
-            $('#siDoc > ul:nth-child(5) > li > div.scConDoc.clearBar > div > p')
-              .each((i, p) => {
-                let inner = $(p).text();
-                if(inner && inner != undefined && inner.length > 10) {
-                  let name = inner.split(' : ')[0];
-                  let content = inner.split(' : ')[1].split('/');
-                  meal[name] = content;
-                }
-              });
-            
-            cache[`${month}-${day}`] = meal;
-            
-            res.status(200).json(meal);
-          })
-          .catch(e => {
-            console.error(e);
-            res.status(500).send({status: 'fail', message: e});
-          })
-      })
-      .catch(e => {
+        $('#siDoc > ul:nth-child(5) > li > div.scConDoc.clearBar > div > p')
+          .each((i, p) => {
+            let inner = $(p).text();
+            if(inner && inner != undefined && inner.length > 10) {
+              let name = inner.split(' : ')[0];
+              let content = inner.split(' : ')[1].split('/');
+              meal[name] = content;
+            }
+          });
+        
+        cache[`${month}-${day}`] = meal;
+        
+        res.status(200).json(meal);
+      } catch(e) {
         console.error(e);
-        res.status(500).send({status: 'fail', message: e});
-      });
+        res.status(500).send({status: 'fail', messsage: e});
+      }
     }
-  }
-  else {
+  } else {
     res.status(500).send({status: 'fail', message: 'parameter empty'});
   }
 });
